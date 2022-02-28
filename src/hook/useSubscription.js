@@ -22,7 +22,7 @@ const useSubscription = () => {
   };
 
   const response = useQuery("getSubscription", async () => {
-    if (user === null) return null;
+    if (user === null) return {data: null};
     
     let res = await getSubscriptionServer();
     return res;
