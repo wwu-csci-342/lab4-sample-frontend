@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "react-query";
 import useAuth from "./useAuth";
 
 const useSubscription = () => {
   const { user } = useAuth();
-
-  const [subscription, setSubscription] = useState(null);
 
   const getSubscriptionServer = async () => {
     const token = await user.getIdToken();
@@ -23,16 +21,14 @@ const useSubscription = () => {
     return data.result;
   };
 
-  const getSubscriptionFront = async () => {
+  const response = useQuery("getSubscription", async () => {
+    if (user === null) return null;
+    
     let res = await getSubscriptionServer();
-    setSubscription(res);
-  }
+    return res;
+  });
 
-  useEffect(() => {
-    if (user) getSubscriptionFront();
-  }, [user]);
-
-  return subscription;
+  return response.data;
 };
 
 export default useSubscription;

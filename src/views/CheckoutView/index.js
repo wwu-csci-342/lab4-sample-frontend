@@ -13,6 +13,7 @@ const StripTransaction = (props) => {
   return (
     <div className="container">
       <h2>Checkout</h2>
+      <p>$5 / mo for Premium Membership</p>
       <StripePaymentForm
         user={user}
         clientSecret={clientSecret}

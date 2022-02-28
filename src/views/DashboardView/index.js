@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "react-query";
 import { Navigate } from "react-router-dom";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
@@ -9,7 +10,7 @@ import useSubscription from "../../hook/useSubscription";
 import useIsMountedRef from "../../hook/useIsMountedRef";
 import Error from "../../components/Error";
 
-const Dashboard = () => {
+const DashboardView = () => {
   const { user, logout } = useAuth();
   const isMountedRef = useIsMountedRef();
 
@@ -19,6 +20,9 @@ const Dashboard = () => {
   const [tasks, setTasks] = useState([]);
 
   const subscription = useSubscription();
+
+  // query manager
+  const queryClient = useQueryClient();
 
   // Fetch Tasks
   const fetchTasksServer = async () => {
@@ -70,7 +74,7 @@ const Dashboard = () => {
   const addTask = async (task) => {
     try {
       const data = await addTaskServer(task);
-      setTasks([...tasks, data]);
+      if (isMountedRef.current) setTasks([...tasks, data]);
     } catch (err) {
       setError(err.message);
     }
@@ -94,7 +98,8 @@ const Dashboard = () => {
     try {
       const status = await deleteTaskServer(id);
 
-      if (status === 200) setTasks(tasks.filter((task) => task.id !== id));
+      if (status === 200 && isMountedRef.current)
+        setTasks(tasks.filter((task) => task.id !== id));
       else throw new Error("Error Deleting This Task");
     } catch (err) {
       setError(err.message);
@@ -156,7 +161,7 @@ const Dashboard = () => {
   // create subscription front
   const createSubscriptionFront = async () => {
     let response = await createSubscriptionServer();
-    setClientSecret(response.clientSecret);
+    if (isMountedRef.current) setClientSecret(response.clientSecret);
   };
 
   // cancel subscription server
@@ -179,7 +184,44 @@ const Dashboard = () => {
 
   const cancelSubscriptionFront = async () => {
     let response = await cancelSubscriptionServer();
+    // invalidate subscription
+    queryClient.invalidateQueries("getSubscription");
     return response;
+  };
+
+  const getUserInfo = () => {
+    let message = "";
+
+    if (
+      subscription &&
+      subscription.tier === "premium" &&
+      (subscription.canceled === null || subscription.canceled === undefined)
+    )
+      message = (
+        <p>
+          Your subscription is being processed. You can refresh the page in a
+          minute.
+        </p>
+      );
+    else if (
+      subscription &&
+      subscription.tier === "premium" &&
+      subscription.canceled
+    )
+      message = (
+        <p>
+          Your subscription is canceled but you can still use the premium
+          service till {subscription.renewTime.split("T")[0]}.
+        </p>
+      );
+    else if (
+      subscription &&
+      subscription.tier === "premium" &&
+      subscription.canceled === false
+    )
+      message = <p>Welcome premium user!</p>;
+
+    return message;
   };
 
   if (user === null || user === undefined)
@@ -199,22 +241,7 @@ const Dashboard = () => {
         logout={logout}
       />
 
-      {subscription &&
-        subscription.tier === "premium" &&
-        subscription.canceled && (
-          <p>
-            Your subscription is canceled but you can still use the premium
-            service till {subscription.renewTime.split("T")[0]}
-          </p>
-        )}
-
-      {subscription &&
-        subscription.tier === "premium" &&
-        !subscription.canceled && (
-          <p>
-            Welcome premium user!
-          </p>
-        )}
+      {getUserInfo()}
 
       {showAddTask && <AddTask onAdd={addTask} />}
 
@@ -231,4 +258,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default DashboardView;

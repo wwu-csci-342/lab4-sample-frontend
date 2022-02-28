@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import Button from "react-bootstrap/Button";
+import useIsMountedRef from "../../../hook/useIsMountedRef";
 
 const Header = ({
   subscription,
@@ -9,6 +11,19 @@ const Header = ({
   showAdd,
   logout,
 }) => {
+  // loading states
+  const [upgradeIsLoading, setUpgradeLoading] = useState(false);
+  const isMountedRef = useIsMountedRef();
+
+  // update loading states
+  useEffect(() => {
+    if (upgradeIsLoading) {
+      onSubscription().then(() => {
+        if (isMountedRef.current) setUpgradeLoading(false);
+      });
+    }
+  }, [upgradeIsLoading]);
+
   return (
     <header className="header">
       <h2>Add a Task</h2>
@@ -16,8 +31,12 @@ const Header = ({
         {showAdd ? "Close" : "Add"}
       </Button>
       {subscription && subscription.tier === "free" && (
-        <Button variant="primary" onClick={() => onSubscription()}>
-          Upgrade
+        <Button
+          variant="primary"
+          disabled={upgradeIsLoading}
+          onClick={() => setUpgradeLoading(true)}
+        >
+          {upgradeIsLoading ? "Loading…" : "Upgrade"}
         </Button>
       )}
       {subscription &&

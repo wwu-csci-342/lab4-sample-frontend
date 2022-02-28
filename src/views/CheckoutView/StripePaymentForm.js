@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "react-query";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   PaymentElement,
@@ -8,6 +9,7 @@ import {
 } from "@stripe/react-stripe-js";
 import Error from "../../components/Error";
 import Button from "react-bootstrap/Button";
+import useIsMountedRef from "../../hook/useIsMountedRef";
 
 // call `loadStripe` outside of a component’s render
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
@@ -16,6 +18,20 @@ const CheckoutForm = ({ user, clientSecret }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [error, setError] = useState(null);
+
+  // query manager
+  const queryClient = useQueryClient();
+
+  // loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useIsMountedRef();
+
+  // update loading states
+  useEffect(() => {
+    setTimeout(() => {
+      if (isMountedRef.current) setIsLoading(false);
+    }, 2000);
+  }, []);
 
   // first stripe payment
   const firstStripePayment = async () => {
@@ -44,8 +60,14 @@ const CheckoutForm = ({ user, clientSecret }) => {
     if (!stripe || !elements) return;
 
     try {
+      // loading effect
+      setIsLoading(true);
+
       // quick first payment
       await firstStripePayment();
+
+      // invalidate subscription
+      queryClient.invalidateQueries("getSubscription");
 
       // reset get subscription
       const { err } = await stripe.confirmPayment({
@@ -59,6 +81,10 @@ const CheckoutForm = ({ user, clientSecret }) => {
         throw err;
       }
     } catch (err) {
+      // loading effect
+      setIsLoading(false);
+
+      // error state
       setError(err.message);
     }
   };
@@ -67,7 +93,9 @@ const CheckoutForm = ({ user, clientSecret }) => {
     <form id="payment-form" onSubmit={handleSubmit}>
       <PaymentElement />
       {error && <Error error={error} />}
-      <Button variant="primary" type="submit">Check Out</Button>
+      <Button variant="primary" type="submit" disabled={isLoading}>
+        {isLoading ? "Loading..." : "Check Out"}
+      </Button>
     </form>
   );
 };
